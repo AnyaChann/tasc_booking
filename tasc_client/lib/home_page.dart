@@ -26,29 +26,43 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Place> popularPlaces = [];
+  List<Place> places = [];
   bool isLoading = true;
+  int selectedCategory = 2; // 0: Hotels, 1: Flights, 2: All
 
   @override
   void initState() {
     super.initState();
-    fetchPopularPlaces();
+    fetchPlaces(selectedCategory);
   }
 
-  // ...existing code...
-  Future<void> fetchPopularPlaces() async {
-    final response = await http.get(Uri.parse('http://localhost:8080/api/places/popular'));
+  Future<void> fetchPlaces(int category) async {
+    setState(() {
+      isLoading = true;
+      selectedCategory = category;
+    });
+
+    String url;
+    if (category == 0) {
+      url = 'http://localhost:8080/api/places/category/Hotels';
+    } else if (category == 1) {
+      url = 'http://localhost:8080/api/places/category/Flights';
+    } else {
+      url = 'http://localhost:8080/api/places/all';
+    }
+
+    final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final Map<String, dynamic> jsonBody = json.decode(response.body);
       final data = jsonBody['data'];
       if (data is List) {
         setState(() {
-          popularPlaces = data.map((item) => Place.fromJson(item)).toList();
+          places = data.map((item) => Place.fromJson(item)).toList();
           isLoading = false;
         });
       } else {
         setState(() {
-          popularPlaces = [];
+          places = [];
           isLoading = false;
         });
       }
@@ -56,10 +70,8 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         isLoading = false;
       });
-      // Handle error
     }
   }
-// ...existing code...
 
   @override
   Widget build(BuildContext context) {
@@ -113,9 +125,36 @@ class _HomePageState extends State<HomePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _CategoryButton(icon: Icons.hotel, label: 'Hotels', color: Color(0xFFFFE0E0)),
-                    _CategoryButton(icon: Icons.flight, label: 'Flights', color: Color(0xFFFFE3E3)),
-                    _CategoryButton(icon: Icons.apps, label: 'All', color: Color(0xFFE0F7FA)),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => fetchPlaces(0),
+                        child: _CategoryButton(
+                          icon: Icons.hotel,
+                          label: 'Hotels',
+                          color: selectedCategory == 0 ? Color(0xFF8B5CF6).withOpacity(0.2) : Color(0xFFFFE0E0),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => fetchPlaces(1),
+                        child: _CategoryButton(
+                          icon: Icons.flight,
+                          label: 'Flights',
+                          color: selectedCategory == 1 ? Color(0xFF8B5CF6).withOpacity(0.2) : Color(0xFFFFE3E3),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => fetchPlaces(2),
+                        child: _CategoryButton(
+                          icon: Icons.apps,
+                          label: 'All',
+                          color: selectedCategory == 2 ? Color(0xFF8B5CF6).withOpacity(0.2) : Color(0xFFE0F7FA),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -131,10 +170,10 @@ class _HomePageState extends State<HomePage> {
                       ? Center(child: CircularProgressIndicator())
                       : ListView.separated(
                           scrollDirection: Axis.horizontal,
-                          itemCount: popularPlaces.length,
+                          itemCount: places.length,
                           separatorBuilder: (_, __) => SizedBox(width: 16),
                           itemBuilder: (context, index) {
-                            final place = popularPlaces[index];
+                            final place = places[index];
                             return _PlaceCard(place: place);
                           },
                         ),
@@ -170,21 +209,19 @@ class _CategoryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: Colors.deepPurple),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: Colors.deepPurple),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
